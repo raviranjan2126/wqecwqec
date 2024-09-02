@@ -1,0 +1,57 @@
+name: Terraform Deployment to Google Cloud
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  TF_WORKING_DIR: "."
+
+jobs:
+  terraform:
+    name: Deploy Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GOOGLE_CLOUD_KEYFILE_JSON }}
+        project_id: ${{ env.GOOGLE_CLOUD_PROJECT }}
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.0
+
+    - name: Initialize Terraform
+      working-directory: ${{ env.TF_WORKING_DIR }}
+      run: terraform init
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+    - name: Terraform Format
+      working-directory: ${{ env.TF_WORKING_DIR }}
+      run: terraform fmt -check
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+    - name: Terraform Plan
+      working-directory: ${{ env.TF_WORKING_DIR }}
+      run: terraform plan
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+    - name: Apply Terraform
+      if: github.ref == 'refs/heads/main'
+      working-directory: ${{ env.TF_WORKING_DIR }}
+      run: terraform apply -auto-approve
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
